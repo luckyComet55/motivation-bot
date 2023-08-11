@@ -49,7 +49,7 @@ async def handle_new_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not res:
             msg = strings.err_internal
         else:
-            msg = f'Имя задачи {parsed_args[0]}, дедлайн {parsed_args[1]}'
+            msg = f'{parsed_args}'
     await context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
 
 async def handle_get_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -57,22 +57,17 @@ async def handle_get_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
     res = repo.get_task(username)
     msg = f'Всего задач {len(res)}'
     for r in res:
-        msg += f'\nИмя задачи {r[0]}, дедлайн {r[1]}'
+        msg += f'\n{r}'
     await context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
 
 if __name__ == '__main__':
     app = config.app_config(api_key)
-    start_handler = CommandHandler(strings.START, handle_start)
-    echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), handle_echo)
-    new_task_handler = CommandHandler(strings.ADD_ASSIGNMENT, handle_new_task)
-    get_task_handler = CommandHandler(strings.GET_ASSIGNMENTS, handle_get_task)
-    help_handler = CommandHandler(strings.HELP, handle_help)
     config.handlers_config(app,
-                           start_handler,
-                           echo_handler,
-                           new_task_handler,
-                           help_handler,
-                           get_task_handler
+                           CommandHandler(strings.START, handle_start),
+                           MessageHandler(filters.TEXT & (~filters.COMMAND), handle_echo),
+                           CommandHandler(strings.ADD_ASSIGNMENT, handle_new_task),
+                           CommandHandler(strings.HELP, handle_help),
+                           CommandHandler(strings.GET_ASSIGNMENTS, handle_get_task)
                            )
 
     app.run_polling()

@@ -1,15 +1,18 @@
 import strings
+import datetime
+from task import Task
 
-def parse_new_task(args: list[str]) -> list | None:
+def parse_new_task(args: list[str]) -> Task | None:
     args_len = len(args)
     if args_len < 3:
         return None
-    res = []
     task_name_end = args_len - 2
-    res.append(' '.join(args[:task_name_end]))
-    res += args[task_name_end:]
-    print(res)
-    return res
+    name = ' '.join(args[:task_name_end])
+    dt = args[task_name_end]
+    delay = args[task_name_end + 1]
+    deadline_parsed = datetime.datetime.strptime(dt, '%d.%m.%YT%H:%M')
+    task = Task(name, deadline_parsed, delay)
+    return task
 
 def parse_help(args: list[str]) -> str:
     args_len = len(args)

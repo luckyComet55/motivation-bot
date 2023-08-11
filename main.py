@@ -1,76 +1,78 @@
 from dotenv import load_dotenv
 import logging
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
+from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
 from random import randint
-from config import hello_msg_sequence, echo_msg_storage, manual_general, manual_specific
+import strings
+import handlers
+import config
+import repository as repo
 import os
+
+
+if not os.path.exists('./.env'):
+    print('.env file not found')
+    exit(1)
+
+load_dotenv()
+api_key = os.environ['API_KEY']
+
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 
-load_dotenv()
-api_key = os.environ['API_KEY']
-
 async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    for msg in hello_msg_sequence:
+    for msg in strings.hello_msg_sequence:
         await context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
 
 async def handle_echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    idx = randint(0, len(echo_msg_storage) - 1)
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=echo_msg_storage[idx])
-
-def parse_help(args: list[str]):
-    args_len = len(args)
-    if args_len == 0:
-        return manual_general
-    if args_len > 1:
-        return 'Должна быть только одна команда'
-    cmd = args[0]
-    if cmd not in manual_specific:
-        return 'Нет такой команды'
-    return manual_specific[cmd]
+    idx = randint(0, len(strings.echo_msg_storage) - 1)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=strings.echo_msg_storage[idx])
 
 async def handle_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
-    msg = parse_help(args)
+    msg = handlers.parse_help(args)
     await context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
 
-def parse_new_ass(args: list[str]):
-    args_len = len(args)
-    if args_len < 3:
-        return None
-    res = []
-    assignment_name_end = args_len - 2
-    res.append(' '.join(args[:assignment_name_end]))
-    res += args[assignment_name_end:]
-    print(res)
-    return res
 
-async def handle_assignment(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_new_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
-    parsed_args = parse_new_ass(args)
+    parsed_args = handlers.parse_new_task(args)
     msg = ''
     if parsed_args is None:
-        msg = 'Надо три (3!) аргумента'
+        msg = strings.err_incorrect_args
     else:
-        msg = f'Имя задачи {parsed_args[0]}'
+        username = update.effective_user.username
+        res = repo.save_task(username, parsed_args)
+        if not res:
+            msg = strings.err_internal
+        else:
+            msg = f'Имя задачи {parsed_args[0]}, дедлайн {parsed_args[1]}'
     await context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
 
-def bot_initial_config(token: str):
-    return ApplicationBuilder().token(token).build()
+async def handle_get_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    username = update.effective_user.username
+    res = repo.get_task(username)
+    msg = f'Всего задач {len(res)}'
+    for r in res:
+        msg += f'\nИмя задачи {r[0]}, дедлайн {r[1]}'
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
 
 if __name__ == '__main__':
-    app = bot_initial_config(api_key)
-    start_handler = CommandHandler('start', handle_start)
+    app = config.app_config(api_key)
+    start_handler = CommandHandler(strings.START, handle_start)
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), handle_echo)
-    ass_handler = CommandHandler('add_assignment', handle_assignment)
-    help_handler = CommandHandler('help', handle_help)
-    app.add_handler(start_handler)
-    app.add_handler(echo_handler)
-    app.add_handler(ass_handler)
-    app.add_handler(help_handler)
+    new_task_handler = CommandHandler(strings.ADD_ASSIGNMENT, handle_new_task)
+    get_task_handler = CommandHandler(strings.GET_ASSIGNMENTS, handle_get_task)
+    help_handler = CommandHandler(strings.HELP, handle_help)
+    config.handlers_config(app,
+                           start_handler,
+                           echo_handler,
+                           new_task_handler,
+                           help_handler,
+                           get_task_handler
+                           )
 
     app.run_polling()

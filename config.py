@@ -1,24 +1,8 @@
-hello_msg_sequence=[
-    'НУ ПРИВЕТ',
-    'Добро пожаловать в ДУ ЙОР ФАКИН ДЖОБ бот (имя мне лень менять было)',
-    'ПОРА НАКОНЕЦ ЗА РАБОТУ',
-    'СУКА'
-]
+from telegram.ext import ApplicationBuilder, Application
 
-echo_msg_storage=[
-    'Я бот, ты или команды пиши, или делами полезными занимайся'
-]
+def app_config(token: str) -> Application:
+    return ApplicationBuilder().token(token).build()
 
-manual_general='''
-/add_assignment <имя_задачи> <дедлайн> <частота_напоминаний> -- добавить задачу\n
-'''
-
-manual_specific={
-    'add_assignment': '''
-/add_assignment <имя_задачи> <дедлайн> <частота_напоминаний> -- добавить задачу\n
-<имя_задачи> -- может состоять из нескольких разделенных пробелами слов\n
-<дедлайн> -- дата дедлайна задачи\n
-<частота_напоминаний> -- число+формат_времени. К примеру 30m -- 30 минут.
-Поддериживаются форматы времени m, h, d (минута, час, день)
-'''
-}
+def handlers_config(app: Application, *args):
+    for handler in args:
+        app.add_handler(handler)
